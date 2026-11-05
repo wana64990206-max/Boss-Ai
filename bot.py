@@ -36,8 +36,22 @@ FREE_LIMIT = 15
 MONTHLY_PRICE = 100
 DB_FILE = "/data/bossai.db"
 
+
 bot = telebot.TeleBot(TOKEN, parse_mode=None)
 
+PRIVATE_MODE = os.environ.get("PRIVATE_MODE", "0").strip() == "1"
+
+
+@bot.message_handler(
+    func=lambda m: PRIVATE_MODE and not is_admin(m.from_user.id),
+    content_types=["text", "photo", "document", "voice", "audio"]
+)
+def private_mode_notice(message):
+    bot.reply_to(
+        message,
+        "⏸️ BOSSAI is taking a short break while we improve it. "
+        "We'll be back soon. Thank you for your patience!"
+    )
 
 CHAT_MODELS = {
     "DeepSeek": "deepseek/deepseek-chat",
@@ -3729,12 +3743,13 @@ def main():
 
     startup_diagnostic()
 
-    reengagement_thread = threading.Thread(
-        target=reengagement_loop,
-        daemon=True
-    )
-    reengagement_thread.start()
-
+    
+    if not PRIVATE_MODE:
+        reengagement_thread = threading.Thread(
+            target=reengagement_loop,
+            daemon=True
+        )
+        reengagement_thread.start()
     while True:
         try:
             bot.infinity_polling(
